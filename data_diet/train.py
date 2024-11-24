@@ -11,6 +11,7 @@ from .recorder import init_recorder, record_ckpt, record_test_stats, record_trai
 from .test import get_test_step, test
 from .train_state import TrainState, get_train_state
 from .utils import make_dir, print_args, save_args, set_global_seed
+import os
 
 
 ########################################################################################################################
@@ -97,9 +98,15 @@ def _record_test(rec, t, T, t_prev, t_start, lr, train_acc, test_acc, test_loss,
 
 
 def _save_checkpoint(save_dir, step, state, rec, forget_stats=None):
+    # Convert save_dir to an absolute path
+    save_dir = os.path.abspath(save_dir)
+
+    # Save the checkpoint
     checkpoints.save_checkpoint(save_dir + '/ckpts', state, step, keep=10000)
+    
     if forget_stats:
         save_forget_scores(save_dir, step, forget_stats)
+    
     rec = record_ckpt(rec, step)
     return rec
 
@@ -114,7 +121,7 @@ def train(args):
     _make_dirs(args)
     I_train, X_train, Y_train, X_test, Y_test, args = load_data(args)
     model = get_model(args)
-    state, args = get_train_state(args, model)
+    state, optimizer, args = get_train_state(args, model)
     f_train, f_test = get_apply_fn_train(model), get_apply_fn_test(model)
     test_step = jit(get_test_step(f_test))
     train_step = jit(get_train_step(value_and_grad(get_loss_fn(f_train), has_aux=True)))
@@ -131,7 +138,7 @@ def train(args):
     time_start = time.time()
     time_now = time_start
     print('train net...')
-    test_loss, test_acc = test(test_step, params, state.model, X_test, Y_test, args.test_batch_size)
+    test_loss, test_acc = test(test_step, state, X_test, Y_test, args.test_batch_size)
     rec, time_now = _record_test(rec, args.ckpt, args.num_steps, time_now, time_start, None, None, test_acc, test_loss, True)
     rec = _save_checkpoint(args.save_dir, args.ckpt, state, rec, forget_stats)
 

@@ -3,6 +3,7 @@
 from data_diet.train import train
 import sys
 from types import SimpleNamespace
+import os
 
 # setup
 ROOT = sys.argv[1]
@@ -45,7 +46,7 @@ args.test_batch_size = 1024
 args.augment = True
 args.track_forgetting = True
 # checkpoints
-args.save_dir = EXPS_DIR + f'/{EXP}/run_{RUN}'
+args.save_dir = os.path.abspath(EXPS_DIR + f'/{EXP}/run_{RUN}')
 args.log_steps = EP_STEPS
 args.early_step = 0
 args.early_save_steps = None

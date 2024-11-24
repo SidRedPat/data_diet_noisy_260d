@@ -21,7 +21,11 @@ def create_train_state(args, model):
         return model.init(*args)
     
     key, input = random.PRNGKey(args.model_seed), jnp.ones((1, *args.image_shape), model.dtype)
-    model_state, params = init(key, input).pop('params')
+    output = init(key, input)  # This returns a dictionary with the model state and parameters
+    
+    # Extract the model parameters and state
+    params = output['params']
+    model_state = output  # You might want to include more than just 'params' in the model state, adjust as needed
     
     if not hasattr(args, 'nesterov'): 
         args.nesterov = False
