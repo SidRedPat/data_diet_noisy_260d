@@ -54,7 +54,7 @@ def load_cifar10(args):
   time_start = time.time()
   (X_train, Y_train), (X_test, Y_test) = tfds.as_numpy(tfds.load(
       name='cifar10', split=['train', 'test'], data_dir=args.data_dir,
-      batch_size=-1, download=False, as_supervised=True))
+      batch_size=-1, download=True, as_supervised=True))
   print(f'{int(time.time() - time_start)}s')
   # normalize images, one hot labels
   num_classes = 10
@@ -74,7 +74,7 @@ def load_cifar100(args):
   time_start = time.time()
   (X_train, Y_train), (X_test, Y_test) = tfds.as_numpy(tfds.load(
       name='cifar100', split=['train', 'test'], data_dir=args.data_dir,
-      batch_size=-1, download=False, as_supervised=True))
+      batch_size=-1, download=True, as_supervised=True))
   print(f'{int(time.time() - time_start)}s')
   # normalize images, one hot labels
   num_classes = 100
