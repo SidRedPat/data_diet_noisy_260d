@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:11.0-cudnn8-devel-ubuntu18.04
+FROM nvcr.io/nvidia/cuda:11.0.3-base-ubuntu18.04
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -25,14 +25,14 @@ ENV LC_ALL en_US.UTF-8
 RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
     DEBIAN_FRONTEND=DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        python3.7 \
-        python3.7-dev \
+        python3.8 \
+        python3.8-dev \
         && \
     rm -rf /var/lib/apt/lists/* && \
     curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python3.7 get-pip.py && \
-    ln -s /usr/bin/python3.7 /usr/local/bin/python3 && \
-    ln -s /usr/bin/python3.7 /usr/local/bin/python && \
+    python3.8 get-pip.py && \
+    ln -s /usr/bin/python3.8 /usr/local/bin/python3 && \
+    ln -s /usr/bin/python3.8 /usr/local/bin/python && \
     pip install --upgrade pip && \
     pip install --upgrade \
         numpy \

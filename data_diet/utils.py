@@ -4,6 +4,7 @@ import os
 import shutil
 import tensorflow as tf
 from types import SimpleNamespace
+import optax  # Importing optax for optimization
 from .models import get_apply_fn_test, get_model
 from .train_state import get_train_state
 
@@ -13,21 +14,25 @@ from .train_state import get_train_state
 ########################################################################################################################
 
 def save_args(args, save_dir, verbose=True):
-  save_path = save_dir + '/args.json'
-  with open(save_path, 'w') as f: json.dump(vars(args), f, indent=4)
-  if verbose: print(f'Save args to {save_path}')
-  return save_dir + '/args.json'
+    save_path = save_dir + '/args.json'
+    with open(save_path, 'w') as f:
+        json.dump(vars(args), f, indent=4)
+    if verbose:
+        print(f'Save args to {save_path}')
+    return save_dir + '/args.json'
 
 
 def load_args(load_dir, verbose=True):
-  load_path = load_dir + '/args.json'
-  with open(load_path, 'r') as f: args = SimpleNamespace(**json.load(f))
-  if verbose: print(f'Load args from {load_path}')
-  return args
+    load_path = load_dir + '/args.json'
+    with open(load_path, 'r') as f:
+        args = SimpleNamespace(**json.load(f))
+    if verbose:
+        print(f'Load args from {load_path}')
+    return args
 
 
 def print_args(args):
-  print(json.dumps(vars(args), indent=4))
+    print(json.dumps(vars(args), indent=4))
 
 
 ########################################################################################################################
@@ -35,9 +40,9 @@ def print_args(args):
 ########################################################################################################################
 
 def make_dir(path):
-  if os.path.exists(path):
-    shutil.rmtree(path)
-  os.makedirs(path)
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
 
 
 ########################################################################################################################
@@ -45,11 +50,16 @@ def make_dir(path):
 ########################################################################################################################
 
 def get_fn_params_state(args):
-  model = get_model(args)
-  fn = get_apply_fn_test(model)
-  state, args = get_train_state(args, model)
-  params, state = state.optim.target, state.model
-  return fn, params, state
+    model = get_model(args)
+    fn = get_apply_fn_test(model)
+
+    # Use get_train_state to initialize model parameters and optimizer state
+    state, args = get_train_state(args, model)
+
+    # Extract parameters and optimizer state explicitly
+    params = state.params  # Assuming `state.params` holds the model parameters
+    opt_state = state.opt_state  # Assuming `state.opt_state` holds optimizer state
+    return fn, params, opt_state
 
 
 ########################################################################################################################
@@ -57,5 +67,5 @@ def get_fn_params_state(args):
 ########################################################################################################################
 
 def set_global_seed(seed=0):
-  np.random.seed(seed)
-  tf.random.set_seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
