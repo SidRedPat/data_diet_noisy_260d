@@ -14,16 +14,26 @@ from .test import get_test_step, test
 from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_train_step(loss_and_grad_fn, args):
     def train_step(state, x, y, lr):
+        """
+        Perform a training step.
+
+        Args:
+            state: The current TrainState containing params, opt_state, and model_state.
+            x: Input batch.
+            y: Target batch.
+            lr: Learning rate for the current step.
+
+        Returns:
+            Updated TrainState, logits, loss, and accuracy.
+        """
         # Perform the forward pass with params and model_state
         (loss, (acc, logits, new_model_state)), gradients = loss_and_grad_fn(state.params, state.model_state, x, y)
 
         # Apply gradients using optax
-        updates, new_opt_state = optax.update(gradients, state.opt_state, state.params)
+        updates, new_opt_state = state.tx.update(gradients, state.opt_state, state.params)
         new_params = optax.apply_updates(state.params, updates)
 
         # Return updated state with new model_state and optimizer state
@@ -31,7 +41,8 @@ def get_train_step(loss_and_grad_fn, args):
             step=state.step + 1,
             params=new_params,
             opt_state=new_opt_state,
-            model_state=new_model_state  # Update model_state after training step
+            model_state=new_model_state,
+            tx=state.tx  # Keep the transformation pipeline
         )
         return new_state, logits, loss, acc
     return train_step
@@ -95,7 +106,7 @@ def get_loss_fn(f_train):
 
 def train(args):
     # setup
-    logging.info("Starting training setup...")
+    print("Starting training setup...")
     set_global_seed()
     make_dir(args.save_dir)
     make_dir(args.save_dir + '/ckpts')
@@ -114,29 +125,29 @@ def train(args):
 
     # log and save initial state
     save_args(args, args.save_dir)
-    logging.info(f"Initial test: Computing accuracy and loss on the test set...")
+    print(f"Initial test: Computing accuracy and loss on the test set...")
     test_loss, test_acc = test(test_step, state, X_test, Y_test, args.test_batch_size)
     rec = record_test_stats(rec, args.ckpt, test_loss, test_acc)
     checkpoints.save_checkpoint(args.save_dir + '/ckpts', state, step=args.ckpt)
-    logging.info(f"Initial test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
+    print(f"Initial test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
 
     # train loop
-    logging.info("Starting training loop...")
+    print("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
         lr = lr_schedule(t)
         state, logits, loss, acc = train_step(state, x, y, lr)
         rec = record_train_stats(rec, t, loss.item(), acc.item(), lr)
 
         if t % args.log_steps == 0:
-            logging.info(f"Step {t}: Training loss: {loss.item():.4f}, accuracy: {acc.item():.4f}, learning rate: {lr:.6f}")
+            print(f"Step {t}: Training loss: {loss.item():.4f}, accuracy: {acc.item():.4f}, learning rate: {lr:.6f}")
             test_loss, test_acc = test(test_step, state, X_test, Y_test, args.test_batch_size)
             rec = record_test_stats(rec, t, test_loss, test_acc)
-            logging.info(f"Step {t}: Test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
+            print(f"Step {t}: Test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
 
             # save checkpoint
             checkpoints.save_checkpoint(args.save_dir + '/ckpts', state, step=t)
-            logging.info(f"Checkpoint saved at step {t}.")
+            print(f"Checkpoint saved at step {t}.")
 
     # wrap up
     save_recorder(args.save_dir, rec)
-    logging.info("Training completed. Results saved.")
+    print("Training completed. Results saved.")
