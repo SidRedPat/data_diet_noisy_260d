@@ -16,37 +16,12 @@ from .utils import make_dir, save_args, set_global_seed
 
 
 def get_train_step(loss_and_grad_fn):
-    def train_step(state, tx, x, y, lr):
-        """
-        Perform a training step.
-
-        Args:
-            state: The current TrainState containing params, opt_state, and model_state.
-            tx: The gradient transformation pipeline (Optax).
-            x: Input batch.
-            y: Target batch.
-            lr: Learning rate for the current step.
-
-        Returns:
-            Updated TrainState, logits, loss, and accuracy.
-        """
-        # Perform the forward pass with params and model_state
+    def train_step(state, x, y, lr):
+        # Forward pass, loss, and gradient computation
         (loss, (acc, logits, new_model_state)), gradients = loss_and_grad_fn(
             state.params, state.model_state, x, y
         )
-
-        # Apply gradients using optax
-        updates, new_opt_state = tx.update(gradients, state.opt_state, state.params)
-        new_params = optax.apply_updates(state.params, updates)
-
-        # Return updated state
-        new_state = TrainState(
-            step=state.step + 1,
-            params=new_params,
-            opt_state=new_opt_state,
-            model_state=new_model_state,
-        )
-        return new_state, logits, loss, acc
+        return loss, acc, logits, new_model_state, gradients
     return train_step
 
 def get_lr_schedule(args):
@@ -138,7 +113,22 @@ def train(args):
     print("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
         lr = lr_schedule(t)
-        state, logits, loss, acc = train_step(state, tx, x, y, lr)  # Pass tx explicitly
+
+        # Forward pass and gradient computation
+        loss, acc, logits, new_model_state, gradients = train_step(state, x, y, lr)
+
+        # Gradient update using tx (outside JIT)
+        updates, new_opt_state = tx.update(gradients, state.opt_state, state.params)
+        new_params = optax.apply_updates(state.params, updates)
+
+        # Update TrainState
+        state = TrainState(
+            step=state.step + 1,
+            params=new_params,
+            opt_state=new_opt_state,
+            model_state=new_model_state,
+        )
+
         rec = record_train_stats(rec, t, loss.item(), acc.item(), lr)
 
         if t % args.log_steps == 0:
