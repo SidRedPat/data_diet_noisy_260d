@@ -15,13 +15,14 @@ from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
 
 
-def get_train_step(loss_and_grad_fn, args):
-    def train_step(state, x, y, lr):
+def get_train_step(loss_and_grad_fn):
+    def train_step(state, tx, x, y, lr):
         """
         Perform a training step.
 
         Args:
             state: The current TrainState containing params, opt_state, and model_state.
+            tx: The gradient transformation pipeline (Optax).
             x: Input batch.
             y: Target batch.
             lr: Learning rate for the current step.
@@ -30,19 +31,20 @@ def get_train_step(loss_and_grad_fn, args):
             Updated TrainState, logits, loss, and accuracy.
         """
         # Perform the forward pass with params and model_state
-        (loss, (acc, logits, new_model_state)), gradients = loss_and_grad_fn(state.params, state.model_state, x, y)
+        (loss, (acc, logits, new_model_state)), gradients = loss_and_grad_fn(
+            state.params, state.model_state, x, y
+        )
 
         # Apply gradients using optax
-        updates, new_opt_state = state.tx.update(gradients, state.opt_state, state.params)
+        updates, new_opt_state = tx.update(gradients, state.opt_state, state.params)
         new_params = optax.apply_updates(state.params, updates)
 
-        # Return updated state with new model_state and optimizer state
+        # Return updated state
         new_state = TrainState(
             step=state.step + 1,
             params=new_params,
             opt_state=new_opt_state,
             model_state=new_model_state,
-            tx=state.tx  # Keep the transformation pipeline
         )
         return new_state, logits, loss, acc
     return train_step
@@ -115,10 +117,11 @@ def train(args):
 
     I_train, X_train, Y_train, X_test, Y_test, args = load_data(args)
     model = get_model(args)
-    state, args = get_train_state(args, model)
+    state, tx, args = get_train_state(args, model)  # Extract tx separately
     f_train, f_test = get_apply_fn_train(model), get_apply_fn_test(model)
     test_step = jit(get_test_step(f_test))
-    train_step = jit(get_train_step(value_and_grad(get_loss_fn(f_train), has_aux=True), args))
+    train_step = jit(get_train_step(value_and_grad(get_loss_fn(f_train), has_aux=True)))
+
     lr_schedule = get_lr_schedule(args)
     rec = init_recorder()
     forget_stats = init_forget_stats(args) if args.track_forgetting else None
@@ -135,7 +138,7 @@ def train(args):
     print("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
         lr = lr_schedule(t)
-        state, logits, loss, acc = train_step(state, x, y, lr)
+        state, logits, loss, acc = train_step(state, tx, x, y, lr)  # Pass tx explicitly
         rec = record_train_stats(rec, t, loss.item(), acc.item(), lr)
 
         if t % args.log_steps == 0:
