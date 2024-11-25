@@ -2,6 +2,7 @@ from flax.training import checkpoints, lr_schedule
 from jax import jit, value_and_grad
 import numpy as np
 import time
+import os
 from .data import load_data, train_batches
 from .forgetting import init_forget_stats, update_forget_stats, save_forget_scores
 from .metrics import accuracy, correct, cross_entropy_loss
@@ -91,6 +92,7 @@ def _record_test(rec, t, T, t_prev, t_start, lr, train_acc, test_acc, test_loss,
 
 
 def _save_checkpoint(save_dir, step, state, rec, forget_stats=None):
+  save_dir = os.path.abspath(save_dir)
   checkpoints.save_checkpoint(save_dir + '/ckpts', state, step, keep=10000)
   if forget_stats: save_forget_scores(save_dir, step, forget_stats)
   rec = record_ckpt(rec, step)
