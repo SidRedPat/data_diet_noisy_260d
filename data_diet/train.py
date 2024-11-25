@@ -112,7 +112,6 @@ def train(args):
     # train loop
     print("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
-        print(f"Step {t}: Progressing through training loop.")
         lr = lr_schedule(t)
         # Forward pass and gradient computation
         loss, acc, logits, new_model_state, gradients = train_step(state, x, y, lr)
