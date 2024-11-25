@@ -13,6 +13,77 @@ from .test import get_test_step, test
 from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
 
+def get_train_step(loss_and_grad_fn, args):
+    def train_step(state, x, y, lr):
+        # Perform the forward pass with params and model_state
+        (loss, (acc, logits, new_model_state)), gradients = loss_and_grad_fn(state.params, state.model_state, x, y)
+
+        # Apply gradients using optax
+        updates, new_opt_state = optax.update(gradients, state.opt_state, state.params)
+        new_params = optax.apply_updates(state.params, updates)
+
+        # Return updated state with new model_state and optimizer state
+        new_state = TrainState(
+            step=state.step + 1,
+            params=new_params,
+            opt_state=new_opt_state,
+            model_state=new_model_state  # Update model_state after training step
+        )
+        return new_state, logits, loss, acc
+    return train_step
+
+def get_lr_schedule(args):
+    """
+    Creates a learning rate schedule based on args.
+
+    Args:
+        args: A namespace containing learning rate parameters:
+            - lr (float): Initial learning rate.
+            - decay_factor (float): Factor to decay learning rate.
+            - decay_steps (list[int]): Steps at which to decay learning rate.
+
+    Returns:
+        A callable learning rate schedule function.
+    """
+    if args.lr_vitaly:
+        # Custom linear warmup-decay schedule (if specified in args)
+        def learning_rate(step):
+            base_lr, warmup_steps, total_steps = 0.2, 4680, 31200
+            if step <= warmup_steps:
+                return base_lr * step / warmup_steps
+            else:
+                return base_lr * (1 - (step - warmup_steps) / (total_steps - warmup_steps))
+        return learning_rate
+    elif args.decay_steps:
+        # Piecewise constant schedule using optax
+        schedule = optax.piecewise_constant_schedule(
+            init_value=args.lr,
+            boundaries_and_scales={step: args.decay_factor for step in args.decay_steps}
+        )
+        return schedule
+    else:
+        # Constant learning rate
+        return lambda step: args.lr
+
+def get_loss_fn(f_train):
+    """
+    Creates a loss function for the model.
+
+    Args:
+        f_train: A callable that computes model outputs during training.
+
+    Returns:
+        A loss function that computes cross-entropy loss and auxiliary metrics.
+    """
+    def loss_fn(params, model_state, x, y):
+        # Forward pass through the model
+        logits, new_model_state = f_train(params, model_state, x)
+        loss = cross_entropy_loss(logits, y)  # Calculate cross-entropy loss
+        acc = accuracy(logits, y)            # Calculate accuracy for monitoring
+        return loss, (acc, logits, new_model_state)
+
+    return loss_fn
+
 
 ########################################################################################################################
 #  Train
