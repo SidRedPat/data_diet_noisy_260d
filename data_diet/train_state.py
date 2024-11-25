@@ -1,38 +1,32 @@
-from flax import optim
-from flax.struct import dataclass as flax_dataclass
+from flax.struct import dataclass
 from flax.training import checkpoints
-from jax import jit, random
+import optax
+from jax import random
 import jax.numpy as jnp
-import time
 from typing import Any
-from .models import get_num_params
 
 
-@flax_dataclass
+@dataclass
 class TrainState:
-  optim: optim.Optimizer
-  model: Any
+    step: int
+    params: Any
+    opt_state: Any
 
 
 def create_train_state(args, model):
-  @jit
-  def init(*args):
-    return model.init(*args)
-  key, input = random.PRNGKey(args.model_seed), jnp.ones((1, *args.image_shape), model.dtype)
-  model_state, params = init(key, input).pop('params')
-  if not hasattr(args, 'nesterov'): args.nesterov = False
-  opt = optim.Momentum(args.lr, args.beta, args.weight_decay, args.nesterov).create(params)
-  train_state = TrainState(optim=opt, model=model_state)
-  return train_state
+    key, input_shape = random.PRNGKey(args.model_seed), (1, *args.image_shape)
+    model_state, params = model.init(key, jnp.ones(input_shape)).pop("params")
+
+    optimizer = optax.chain(
+        optax.add_decayed_weights(args.weight_decay),
+        optax.sgd(learning_rate=args.lr, momentum=args.beta, nesterov=args.nesterov)
+    )
+    opt_state = optimizer.init(params)
+    return TrainState(step=0, params=params, opt_state=opt_state), model_state
 
 
 def get_train_state(args, model):
-  time_start = time.time()
-  print('get train state... ', end='')
-  state = create_train_state(args, model)
-  if args.load_dir:
-    print(f'load from {args.load_dir}/ckpts/checkpoint_{args.ckpt}... ', end='')
-    state = checkpoints.restore_checkpoint(args.load_dir + '/ckpts', state, args.ckpt)
-  args.num_params = get_num_params(state.optim.target)
-  print(f'{int(time.time() - time_start)}s')
-  return state, args
+    state, model_state = create_train_state(args, model)
+    if args.load_dir:
+        state = checkpoints.restore_checkpoint(args.load_dir + '/ckpts', state, args.ckpt)
+    return state, args
