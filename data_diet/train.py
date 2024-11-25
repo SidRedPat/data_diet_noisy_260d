@@ -13,6 +13,7 @@ from .recorder import init_recorder, record_ckpt, record_test_stats, record_trai
 from .test import get_test_step, test
 from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
+import tensorflow as tf
 
 
 def get_train_step(loss_and_grad_fn):
@@ -82,6 +83,21 @@ def get_loss_fn(f_train):
 ########################################################################################################################
 
 def train(args):
+        
+    print("Available GPUs:", tf.config.list_physical_devices('GPU'))
+    
+    # Check for available GPUs
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Set memory growth to avoid TensorFlow using all GPU memory
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            # Use the first GPU (if multiple GPUs are available)
+            tf.config.set_visible_devices(gpus[0], 'GPU')
+        except RuntimeError as e:
+            print(e)
+
     # setup
     print("Starting training setup...")
     set_global_seed()
