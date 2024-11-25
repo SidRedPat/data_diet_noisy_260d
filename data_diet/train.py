@@ -1,3 +1,4 @@
+import logging
 from flax.training import checkpoints
 from jax import jit, value_and_grad
 import numpy as np
@@ -12,6 +13,9 @@ from .recorder import init_recorder, record_ckpt, record_test_stats, record_trai
 from .test import get_test_step, test
 from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_train_step(loss_and_grad_fn, args):
     def train_step(state, x, y, lr):
@@ -91,6 +95,7 @@ def get_loss_fn(f_train):
 
 def train(args):
     # setup
+    logging.info("Starting training setup...")
     set_global_seed()
     make_dir(args.save_dir)
     make_dir(args.save_dir + '/ckpts')
@@ -109,26 +114,29 @@ def train(args):
 
     # log and save initial state
     save_args(args, args.save_dir)
+    logging.info(f"Initial test: Computing accuracy and loss on the test set...")
     test_loss, test_acc = test(test_step, state, X_test, Y_test, args.test_batch_size)
     rec = record_test_stats(rec, args.ckpt, test_loss, test_acc)
     checkpoints.save_checkpoint(args.save_dir + '/ckpts', state, step=args.ckpt)
+    logging.info(f"Initial test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
 
     # train loop
+    logging.info("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
         lr = lr_schedule(t)
         state, logits, loss, acc = train_step(state, x, y, lr)
         rec = record_train_stats(rec, t, loss.item(), acc.item(), lr)
 
-        if args.track_forgetting:
-            batch_accs = np.array(correct(logits, y).astype(int))
-            forget_stats = update_forget_stats(forget_stats, idxs, batch_accs)
-
         if t % args.log_steps == 0:
+            logging.info(f"Step {t}: Training loss: {loss.item():.4f}, accuracy: {acc.item():.4f}, learning rate: {lr:.6f}")
             test_loss, test_acc = test(test_step, state, X_test, Y_test, args.test_batch_size)
             rec = record_test_stats(rec, t, test_loss, test_acc)
+            logging.info(f"Step {t}: Test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
 
             # save checkpoint
             checkpoints.save_checkpoint(args.save_dir + '/ckpts', state, step=t)
+            logging.info(f"Checkpoint saved at step {t}.")
 
     # wrap up
     save_recorder(args.save_dir, rec)
+    logging.info("Training completed. Results saved.")
