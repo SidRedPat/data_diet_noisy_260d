@@ -14,7 +14,11 @@ class TrainState:
     model_state: Any
 
     def __post_init__(self):
-        self.tx = optax.chain()  # Not part of dataclass, excluded from serialization
+        # Define the gradient transformation pipeline
+        self.tx = optax.chain(
+            optax.add_decayed_weights(0.0005),  # Example weight decay
+            optax.sgd(learning_rate=0.1, momentum=0.9, nesterov=True)
+        )
 
 
 
@@ -37,21 +41,16 @@ def create_train_state(args, model):
     params = init_vars['params']
     model_state = {k: v for k, v in init_vars.items() if k != 'params'}
 
-    # Create the optimizer using optax
-    tx = optax.chain(
-        optax.add_decayed_weights(args.weight_decay),
-        optax.sgd(learning_rate=args.lr, momentum=args.beta, nesterov=args.nesterov)
-    )
-    opt_state = tx.init(params)
-
-    # Exclude tx from serialization by creating it dynamically
+    # Create the training state
     train_state = TrainState(
         step=0,
         params=params,
-        opt_state=opt_state,
+        opt_state=optax.chain(  # Initialize opt_state based on args
+            optax.add_decayed_weights(args.weight_decay),
+            optax.sgd(learning_rate=args.lr, momentum=args.beta, nesterov=args.nesterov)
+        ).init(params),
         model_state=model_state
     )
-    train_state.tx = tx  # Attach tx separately
     return train_state
 
 
