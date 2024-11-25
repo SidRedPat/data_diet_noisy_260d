@@ -12,7 +12,10 @@ class TrainState:
     params: Any
     opt_state: optax.OptState
     model_state: Any
-    tx: optax.GradientTransformation
+
+    def __post_init__(self):
+        self.tx = optax.chain()  # Not part of dataclass, excluded from serialization
+
 
 
 
@@ -31,7 +34,7 @@ def create_train_state(args, model):
     init_vars = model.init(key, jnp.ones(input_shape))
 
     # Extract trainable parameters and model state
-    params = init_vars['params']  # Trainable parameters
+    params = init_vars['params']
     model_state = {k: v for k, v in init_vars.items() if k != 'params'}
 
     # Create the optimizer using optax
@@ -41,13 +44,15 @@ def create_train_state(args, model):
     )
     opt_state = tx.init(params)
 
-    return TrainState(
+    # Exclude tx from serialization by creating it dynamically
+    train_state = TrainState(
         step=0,
         params=params,
         opt_state=opt_state,
-        model_state=model_state,
-        tx=tx
+        model_state=model_state
     )
+    train_state.tx = tx  # Attach tx separately
+    return train_state
 
 
 
