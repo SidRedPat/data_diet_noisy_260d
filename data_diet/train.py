@@ -114,13 +114,16 @@ def train(args):
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
         lr = lr_schedule(t)
 
+        print("Start forward pass and gradient computation")
         # Forward pass and gradient computation
         loss, acc, logits, new_model_state, gradients = train_step(state, x, y, lr)
 
+        print("Start gradient update using tx")
         # Gradient update using tx (outside JIT)
         updates, new_opt_state = tx.update(gradients, state.opt_state, state.params)
         new_params = optax.apply_updates(state.params, updates)
-
+        
+        print("Start update to TrainState")
         # Update TrainState
         state = TrainState(
             step=state.step + 1,
@@ -129,6 +132,7 @@ def train(args):
             model_state=new_model_state,
         )
 
+        print("Start recording/logging/checkpointing stats")
         rec = record_train_stats(rec, t, loss.item(), acc.item(), lr)
 
         if t % args.log_steps == 0:
