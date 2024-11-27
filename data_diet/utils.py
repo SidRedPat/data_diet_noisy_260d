@@ -2,6 +2,7 @@ import json
 import numpy as np
 import os
 import shutil
+from types import SimpleNamespace
 from .models import get_apply_fn_test, get_model
 from .train_state import get_train_state
 
@@ -20,7 +21,8 @@ def load_args(load_dir, verbose=True):
         args = json.load(f)
     if verbose:
         print(f"Args loaded from {load_path}")
-    return args
+    return SimpleNamespace(**args)  # Convert to SimpleNamespace
+
 
 
 def make_dir(path):
