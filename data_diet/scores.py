@@ -85,13 +85,28 @@ def get_score_fn(fn, params, state, score_type):
 
 
 def compute_scores(fn, params, state, X, Y, batch_sz, score_type):
-    n_batches = X.shape[0] // batch_sz
-    Xs, Ys = np.split(X, n_batches), np.split(Y, n_batches)
+    """
+    Compute scores for a dataset in batches.
+
+    Args:
+        fn: Forward function for the model.
+        params: Model parameters.
+        state: Model state.
+        X: Input data.
+        Y: Labels (one-hot encoded).
+        batch_sz: Batch size for processing.
+        score_type: Type of score to compute.
+
+    Returns:
+        Scores for all examples in the dataset.
+    """
+    n_batches = int(np.ceil(X.shape[0] / batch_sz))  # Calculate number of batches
+    Xs, Ys = np.array_split(X, n_batches), np.array_split(Y, n_batches)  # Use array_split
     score_fn = get_score_fn(fn, params, state, score_type)
     scores = []
-    for i, (X, Y) in enumerate(zip(Xs, Ys)):
-        print(f'score batch {i+1} of {n_batches}')
-        scores.append(score_fn(X, Y))
+    for i, (X_batch, Y_batch) in enumerate(zip(Xs, Ys)):
+        print(f'score batch {i + 1} of {n_batches}')
+        scores.append(score_fn(X_batch, Y_batch))
     scores = np.concatenate(scores)
     return scores
 
