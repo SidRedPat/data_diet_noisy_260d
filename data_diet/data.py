@@ -120,6 +120,11 @@ def load_dataset(args):
     X_train, Y_train, X_test, Y_test, args = load_cinic10(args)
   else:
     raise NotImplementedError
+  
+  # Add noise if specified
+  if hasattr(args, 'noise_level') and args.noise_level > 0:
+    rng = np.random.RandomState(args.model_seed)  # Use model_seed for reproducibility
+    X_train, Y_train = add_noise_to_dataset(X_train, Y_train, args.noise_level, args.noise_type, rng)
   return X_train, Y_train, X_test, Y_test, args
 
 
@@ -327,3 +332,45 @@ def get_class_balanced_random_subset(X, Y, cls_smpl_sz, seed):
   X = np.concatenate([X_c[c, idxs[c]] for c in range(n_cls)])
   Y = np.concatenate([Y_c[c, idxs[c]] for c in range(n_cls)])
   return X, Y
+
+# ######################################################################################################################
+# Noise
+# ######################################################################################################################
+def add_noise_to_dataset(images, labels, noise_level, noise_type, rng):
+    """
+    Add noise to the dataset based on specified parameters.
+    
+    Args:
+        images: numpy array of images
+        labels: numpy array of labels
+        noise_level: percentage of samples to add noise to (0-100)
+        noise_type: "image" for gaussian noise or "label" for label noise
+        rng: numpy random generator for reproducibility
+    
+    Returns:
+        Tuple of (noisy_images, noisy_labels)
+    """
+    num_samples = len(images)
+    num_noisy = int(num_samples * noise_level / 100)
+    noisy_indices = rng.choice(num_samples, num_noisy, replace=False)
+    
+    noisy_images = images.copy()
+    noisy_labels = labels.copy()
+    
+    if noise_type == "label":
+        # For each selected index, change the label to a random different label
+        num_classes = labels.shape[1]  # Get number of classes from one-hot labels
+        for idx in noisy_indices:
+            current_label = np.argmax(labels[idx])
+            possible_labels = list(range(num_classes))
+            possible_labels.remove(current_label)
+            new_label = rng.choice(possible_labels)
+            noisy_labels[idx] = np.zeros(num_classes)
+            noisy_labels[idx, new_label] = 1
+            
+    elif noise_type == "image":
+        # Add gaussian noise to selected images
+        noise = rng.normal(0, 25, size=(num_noisy, *images.shape[1:]))  # std=25 for visible but not overwhelming noise
+        noisy_images[noisy_indices] = np.clip(noisy_images[noisy_indices] + noise, 0, 255)
+    
+    return noisy_images, noisy_labels

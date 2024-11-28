@@ -20,9 +20,10 @@ args = SimpleNamespace()
 args.data_dir = DATA_DIR
 args.dataset = 'cifar10'
 args.noise_level = 0      # percentage of training samples to add noise to
-args.noise_type = "label" # "image" to add noise at the pixel level or "label" to mislabel the image
+args.noise_type = "image" # "image" to add noise at the pixel level or "label" to mislabel the image
 # subsets
-args.subset = None
+args.adaptive = True      # True or False
+args.subset = None        # This needs to run as full data because otherwise the data will be downsampled before the adaptive EL2N
 args.subset_size = None
 args.scores_path = None
 args.subset_offset = None

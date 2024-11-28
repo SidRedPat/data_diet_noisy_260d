@@ -14,7 +14,7 @@ from .test import get_test_step, test
 from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
 import tensorflow as tf
-
+from .adaptive_el2n import AdaptiveEL2NPruning
 
 def get_train_step(loss_and_grad_fn):
     def train_step(state, x, y, lr):
@@ -125,11 +125,30 @@ def train(args):
     checkpoints.save_checkpoint(args.save_dir + '/ckpts', state, step=args.ckpt)
     print(f"Initial test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}")
 
+    pruning_manager = AdaptiveEL2NPruning(
+        initial_prune_percent=0.2,
+        total_epochs=args.num_steps // args.log_steps  # Convert steps to epochs
+    )
+
     # train loop
     print("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
+        if args.adaptive:
+            # Compute EL2N scores and get pruning mask
+            el2n_scores, indices = pruning_manager.compute_el2n_scores(state, f_train, x, y)
+            mask, weights = pruning_manager.adaptive_pruning_strategy(
+                el2n_scores, t, args.log_steps
+            )
+
+            # Apply mask to current batch
+            x = x[mask]
+            y = y[mask]
+            
+            # Skip batch if all examples were pruned
+            if len(x) == 0:
+                continue
+
         lr = lr_schedule(t)
-        # Forward pass and gradient computation
         loss, acc, logits, new_model_state, gradients = train_step(state, x, y, lr)
         # Gradient update using tx (outside JIT)
         updates, new_opt_state = tx.update(gradients, state.opt_state, state.params)
