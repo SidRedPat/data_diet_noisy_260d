@@ -1,8 +1,22 @@
+# IMPORTANT
+
+To ensure we don't have dependency issues, create a virtualenv and install your dependencies inside
+
+First create a virtual environment to install the dependencies:
+
+`python -m venv .venv`
+
+Then activate it
+
+`source .venv/bin/activate`
+
+Install dependencies
+
+`pip install -r requirements.txt`
+
 # Data Diet
 
 This repository accompanies the paper [Deep Learning on a Data Diet: Finding Important Examples Early in Training](TODO) and contains the basic code for replicating the training and computations in it.
-
-
 
 ## Setup
 
@@ -19,13 +33,9 @@ mkdir exps
 
 Store the datasets in `<ROOT>/data`
 
-
-
 ## Experiment Scripts
 
 We provide samples scripts for training networks, and computing scores in [`scripts`](scripts). Our examples are for CIFAR-10 and ResNet18 but can be easily modified for the other datasets and networks in the paper.
-
-
 
 ### Training
 
@@ -45,13 +55,13 @@ To train on a random subset of size `SUBSET_SIZE`, and save to `<ROOT>/exps/<EXP
 python scripts/run_random_subset.py <ROOT:str> <EXP_NAME:str> <SUBSET_SIZE:int> <RUN_NUM:int>
 ```
 
-To train on a subset of size `SUBSET_SIZE` comprised of maximum scores, with scores stored in a 1D numpy array at path `SCORE_PATH`, and save to  `<ROOT>/exps/<EXP_NAME>/size_<SIZE>/run_<RUN_NUM>`, execute
+To train on a subset of size `SUBSET_SIZE` comprised of maximum scores, with scores stored in a 1D numpy array at path `SCORE_PATH`, and save to `<ROOT>/exps/<EXP_NAME>/size_<SIZE>/run_<RUN_NUM>`, execute
 
 ```sh
 python scripts/run_keep_max_scores.py <ROOT:str> <EXP_NAME:str> <SCORE_PATH:str> <SUBSET_SIZE:int> <RUN_NUM:int>
 ```
 
-To train on a subset of size `SUBSET_SIZE` comprised of smallest scores after an offset given by `OFFSET`, with scores stored in a 1D numpy array at path `SCORE_PATH`, and save to  `<ROOT>/exps/<EXP_NAME>/size_<SUBSET_SIZE>.offset_<OFFSET>/run_<RUN_NUM>`, execute
+To train on a subset of size `SUBSET_SIZE` comprised of smallest scores after an offset given by `OFFSET`, with scores stored in a 1D numpy array at path `SCORE_PATH`, and save to `<ROOT>/exps/<EXP_NAME>/size_<SUBSET_SIZE>.offset_<OFFSET>/run_<RUN_NUM>`, execute
 
 ```sh
 python scripts/run_offset_subset.py <ROOT:str> <EXP_NAME:str> <SCORE_PATH:str> <SUBSET_SIZE:int> <OFFSET:int> <RUN_NUM:int>
@@ -64,11 +74,7 @@ args.random_label_fraction = RAND_LABEL_FRAC
 args.random_label_seed = RAND_LABEL_SEED
 ```
 
-
-
-**Variants.**  Currently, the models `resnet18_lowres` and `resnet50_lowres` and datasets `cifar10`, `cinic10`, `cifar100` are supported.
-
-
+**Variants.** Currently, the models `resnet18_lowres` and `resnet50_lowres` and datasets `cifar10`, `cinic10`, `cifar100` are supported.
 
 ### Scores
 
@@ -86,4 +92,4 @@ To calculate the average EL2N, GraNd or forget scores over multiple runs in an e
 python scripts/get_mean_score.py <ROOT:str> <EXP_NAME:str> <N_RUNS:int> <STEP:int> <TYPE:str>
 ```
 
-`TYPE` can be `l2_error`, `grad_norm`, or `forget`. This will save the score in `<ROOT>/exps/<EXP_NAME>`. 
+`TYPE` can be `l2_error`, `grad_norm`, or `forget`. This will save the score in `<ROOT>/exps/<EXP_NAME>`.
