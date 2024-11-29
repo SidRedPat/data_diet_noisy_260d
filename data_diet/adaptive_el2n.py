@@ -76,7 +76,7 @@ class AdaptiveEL2NPruning:
                 0.5, self.initial_prune_percent * (1 + 2 * (epoch_progress - 0.5))
             )
             low_noise_threshold = np.percentile(el2n_scores, 100 * (1 - prune_percent))
-            mask = el2n_scores <= low_noise_threshold
+            mask = el2n_scores > low_noise_threshold
             pruned_samples = np.sum(~mask)
             if current_step % self.log_every == 0:
                 logger.info(
@@ -89,9 +89,13 @@ class AdaptiveEL2NPruning:
         self.pruned_sizes.append(pruned_samples)
         self.total_sizes.append(total_samples)
 
-        weights = 1.0 - (el2n_scores / el2n_scores.max())
+        # Upweight remaining samples to compensate for pruned ones
+        weights = np.ones_like(el2n_scores)
         weights[~mask] = 0.0
-        weights = weights / weights.sum()
+        # Scale weights so they sum to total_samples (upweighting remaining samples)
+        weights = (
+            weights * (total_samples / weights.sum()) if weights.sum() > 0 else weights
+        )
 
         return mask, weights
 

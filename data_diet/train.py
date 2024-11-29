@@ -5,7 +5,6 @@ import optax
 
 from data_diet.plotting import plot_results
 from .data import load_data, train_batches
-from .forgetting import init_forget_stats
 from .metrics import accuracy, cross_entropy_loss
 from .models import get_apply_fn_test, get_apply_fn_train, get_model
 from .recorder import (
@@ -23,10 +22,10 @@ from .adaptive_el2n import AdaptiveEL2NPruning
 
 
 def get_train_step(loss_and_grad_fn):
-    def train_step(state, x, y, lr):
+    def train_step(state, x, y, lr, weights=None):
         # Forward pass, loss, and gradient computation
         (loss, (acc, logits, new_model_state)), gradients = loss_and_grad_fn(
-            state.params, state.model_state, x, y
+            state.params, state.model_state, x, y, weights
         )
         return loss, acc, logits, new_model_state, gradients
 
@@ -83,10 +82,10 @@ def get_loss_fn(f_train):
         A loss function that computes cross-entropy loss and auxiliary metrics.
     """
 
-    def loss_fn(params, model_state, x, y):
+    def loss_fn(params, model_state, x, y, weights=None):
         # Forward pass through the model
         logits, new_model_state = f_train(params, model_state, x)
-        loss = cross_entropy_loss(logits, y)  # Calculate cross-entropy loss
+        loss = cross_entropy_loss(logits, y, weights)  # Calculate cross-entropy loss
         acc = accuracy(logits, y)  # Calculate accuracy for monitoring
         return loss, (acc, logits, new_model_state)
 
@@ -139,7 +138,6 @@ def train(args):
 
     lr_schedule = get_lr_schedule(args)
     rec = init_recorder()
-    forget_stats = init_forget_stats(args) if args.track_forgetting else None
 
     # log and save initial state
     save_args(args, args.save_dir)
@@ -166,6 +164,7 @@ def train(args):
             )
 
             # Apply mask to current batch
+            weights = weights[mask]
             x = x[mask]
             y = y[mask]
 
@@ -173,8 +172,13 @@ def train(args):
             if len(x) == 0:
                 continue
 
-        lr = lr_schedule(t)
-        loss, acc, logits, new_model_state, gradients = train_step(state, x, y, lr)
+            lr = lr_schedule(t)
+            loss, acc, logits, new_model_state, gradients = train_step(
+                state, x, y, lr, weights
+            )
+        else:
+            lr = lr_schedule(t)
+            loss, acc, logits, new_model_state, gradients = train_step(state, x, y, lr)
         # Gradient update using tx (outside JIT)
         updates, new_opt_state = tx.update(gradients, state.opt_state, state.params)
         new_params = optax.apply_updates(state.params, updates)
@@ -212,4 +216,4 @@ def train(args):
     save_recorder(args.save_dir, rec)
     print("Training completed. Results saved.")
 
-    plot_results(args, rec, pruning_manager)
+    plot_results(args, rec)
