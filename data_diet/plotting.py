@@ -1,16 +1,12 @@
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 def plot_results(args, rec):
-    # Create plots
-    steps = np.array(rec.step)
-
     # Create a figure with 2 rows and 2 columns
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
 
     # Plot training and test loss
-    ax1.plot(steps, rec.train_loss, label="Train Loss")
+    ax1.plot(rec.train_step, rec.train_loss, label="Train Loss")
     ax1.plot(rec.test_step, rec.test_loss, label="Test Loss")
     ax1.set_xlabel("Steps")
     ax1.set_ylabel("Loss")
@@ -18,7 +14,7 @@ def plot_results(args, rec):
     ax1.legend()
 
     # Plot training and test accuracy
-    ax2.plot(steps, rec.train_acc, label="Train Accuracy")
+    ax2.plot(rec.train_step, rec.train_acc, label="Train Accuracy")
     ax2.plot(rec.test_step, rec.test_acc, label="Test Accuracy")
     ax2.set_xlabel("Steps")
     ax2.set_ylabel("Accuracy")
