@@ -1,4 +1,4 @@
-# python run_adaptive.py <ROOT:str> <EXP:str> <RUN:int> <RAND_LABEL_FRAC:float> <RAND_LABEL_SEED:int>
+# python run_adaptive.py <ROOT:str> <EXP:str> <RUN:int> <RAND_LABEL_FRAC:float> <RAND_LABEL_SEED:int> <EPOCHS:int> <DATASET_FRACTION:float>
 
 from data_diet.train import train
 import sys
@@ -11,6 +11,8 @@ EXP = sys.argv[2]
 RUN = int(sys.argv[3])
 RAND_LABEL_FRAC = float(sys.argv[4])
 RAND_LABEL_SEED = int(sys.argv[5])
+EPOCHS = int(sys.argv[6])
+DATASET_FRACTION = float(sys.argv[7])
 META_MODEL_SEED, META_TRAIN_SEED, SEED_INCR = 42, 4242, 424242
 EP_STEPS = 30  # 390
 DATA_DIR = os.path.join(ROOT, "data")
@@ -23,7 +25,7 @@ args.data_dir = DATA_DIR
 args.dataset = "cifar10"
 args.random_label_fraction = RAND_LABEL_FRAC
 args.random_label_seed = RAND_LABEL_SEED
-args.dataset_fraction = 0.1
+args.dataset_fraction = DATASET_FRACTION
 # adaptive pruning
 args.adaptive = True  # True or False
 args.initial_prune_percent = 0.2
@@ -47,7 +49,7 @@ args.lr_vitaly = False
 args.decay_factor = 0.2
 args.decay_steps = [60 * EP_STEPS, 120 * EP_STEPS, 160 * EP_STEPS]
 # training
-args.num_steps = 200 * EP_STEPS
+args.num_steps = EPOCHS * EP_STEPS
 args.train_seed = META_TRAIN_SEED + RUN * SEED_INCR
 args.train_batch_size = 128
 args.test_batch_size = 1024
