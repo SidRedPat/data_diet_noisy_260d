@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 import logging
 import jax
 import jax.numpy as jnp
@@ -21,9 +21,9 @@ class AdaptiveEL2NPruning:
         self.device = (
             device or "/GPU:0" if tf.config.list_physical_devices("GPU") else "/CPU:0"
         )
-        self.pruned_percentages = []
-        self.pruned_sizes = []
-        self.total_sizes = []
+        self.pruned_percentages: List[float] = []
+        self.pruned_sizes: List[int] = []
+        self.total_sizes: List[int] = []
         self.current_step = 0
         self.log_every = 20
 
@@ -58,7 +58,7 @@ class AdaptiveEL2NPruning:
         epoch_progress = current_epoch / self.total_epochs
         total_samples = len(el2n_scores)
 
-        if epoch_progress < 0.5:
+        if epoch_progress < 0.3:
             high_noise_threshold = np.percentile(
                 el2n_scores, 100 * (1 - self.initial_prune_percent)
             )
@@ -75,8 +75,8 @@ class AdaptiveEL2NPruning:
             prune_percent = min(
                 0.5, self.initial_prune_percent * (1 + 2 * (epoch_progress - 0.5))
             )
-            low_noise_threshold = np.percentile(el2n_scores, 100 * (1 - prune_percent))
-            mask = el2n_scores > low_noise_threshold
+            low_noise_threshold = np.percentile(el2n_scores, 100 * prune_percent)
+            mask = el2n_scores >= low_noise_threshold
             pruned_samples = np.sum(~mask)
             if current_step % self.log_every == 0:
                 logger.info(
@@ -102,7 +102,7 @@ class AdaptiveEL2NPruning:
     def get_prune_stats(self):
         """Return the pruning statistics"""
         return {
-            "steps": list(range(self.current_step + 1)),
+            "steps": list(range(self.current_step)),
             "pruned_percentages": self.pruned_percentages,
             "pruned_sizes": self.pruned_sizes,
             "total_sizes": self.total_sizes,
