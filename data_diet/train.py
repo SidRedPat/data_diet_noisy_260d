@@ -2,7 +2,7 @@ import logging
 from flax.training import checkpoints
 from jax import jit, value_and_grad
 import optax
-
+from typing import Optional, NamedTuple
 from data_diet.plotting import plot_results
 from .data import load_data, train_batches
 from .metrics import accuracy, cross_entropy_loss
@@ -19,6 +19,12 @@ from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
 import tensorflow as tf
 from .adaptive_el2n import AdaptiveEL2NPruning
+
+
+class EarlyStoppingState(NamedTuple):
+    best_loss: float
+    patience_counter: int
+    best_state: Optional[TrainState]
 
 
 def get_train_step(loss_and_grad_fn):
@@ -153,6 +159,11 @@ def train(args):
     )
     logger.info(f"Set up pruning manager for {args.num_steps // args.log_steps} epochs")
 
+    # Add early stopping configuration after initial test
+    early_stopping = EarlyStoppingState(
+        best_loss=float("inf"), patience_counter=0, best_state=None
+    )
+
     # train loop
     logger.info("Starting training loop...")
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
@@ -204,6 +215,25 @@ def train(args):
             print(
                 f"Step {t}: Test loss: {test_loss:.4f}, test accuracy: {test_acc:.4f}"
             )
+
+            # Early stopping logic
+            if test_loss < early_stopping.best_loss:
+                early_stopping = EarlyStoppingState(
+                    best_loss=test_loss, patience_counter=0, best_state=state
+                )
+                # Save best checkpoint
+                checkpoints.save_checkpoint(
+                    args.save_dir + "/ckpts/best", state, step=t
+                )
+                print(f"New best model saved with test loss: {test_loss:.4f}")
+            else:
+                early_stopping = early_stopping._replace(
+                    patience_counter=early_stopping.patience_counter + 1
+                )
+                if early_stopping.patience_counter >= args.patience:
+                    print(f"Early stopping triggered after {t} steps")
+                    state = early_stopping.best_state  # Restore best state
+                    break
 
             # save checkpoint
             checkpoints.save_checkpoint(args.save_dir + "/ckpts", state, step=t)

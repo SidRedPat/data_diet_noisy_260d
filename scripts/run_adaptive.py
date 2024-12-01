@@ -29,6 +29,7 @@ args.dataset_fraction = DATASET_FRACTION
 # adaptive pruning
 args.adaptive = True  # True or False
 args.initial_prune_percent = 0.2
+args.patience = 20
 # subsets
 args.subset = None  # This needs to run as full data because otherwise the data will be downsampled before the adaptive EL2N
 args.subset_size = None
