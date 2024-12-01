@@ -19,6 +19,7 @@ from .train_state import TrainState, get_train_state
 from .utils import make_dir, save_args, set_global_seed
 import tensorflow as tf
 from .adaptive_el2n import AdaptiveEL2NPruning
+from time import time
 
 
 class EarlyStoppingState(NamedTuple):
@@ -166,6 +167,7 @@ def train(args):
 
     # train loop
     logger.info("Starting training loop...")
+    start_time = time()
     for t, idxs, x, y in train_batches(I_train, X_train, Y_train, args):
         if args.adaptive:
             # Compute EL2N scores and get pruning mask
@@ -239,6 +241,8 @@ def train(args):
             checkpoints.save_checkpoint(args.save_dir + "/ckpts", state, step=t)
             print(f"Checkpoint saved at step {t}.")
 
+    end_time = time()
+    logger.info(f"Train duration {end_time-start_time}s")
     # save prune stats to recorder
     record_prune_stats(rec, pruning_manager.get_prune_stats())
 
