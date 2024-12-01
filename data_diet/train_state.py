@@ -1,38 +1,59 @@
-from flax import optim
-from flax.struct import dataclass as flax_dataclass
+from flax.struct import dataclass
 from flax.training import checkpoints
-from jax import jit, random
+import optax
+from jax import random
 import jax.numpy as jnp
-import time
 from typing import Any
-from .models import get_num_params
+from flax.core import FrozenDict
 
-
-@flax_dataclass
+@dataclass
 class TrainState:
-  optim: optim.Optimizer
-  model: Any
+    step: int
+    params: Any
+    opt_state: optax.OptState
+    model_state: Any
+
+
+
 
 
 def create_train_state(args, model):
-  @jit
-  def init(*args):
-    return model.init(*args)
-  key, input = random.PRNGKey(args.model_seed), jnp.ones((1, *args.image_shape), model.dtype)
-  model_state, params = init(key, input).pop('params')
-  if not hasattr(args, 'nesterov'): args.nesterov = False
-  opt = optim.Momentum(args.lr, args.beta, args.weight_decay, args.nesterov).create(params)
-  train_state = TrainState(optim=opt, model=model_state)
-  return train_state
+    """
+    Initialize the training state.
+
+    Args:
+        args: Training arguments containing hyperparameters.
+        model: The model to be trained.
+
+    Returns:
+        Initialized TrainState.
+    """
+    key, input_shape = random.PRNGKey(args.model_seed), (1, *args.image_shape)
+    init_vars = model.init(key, jnp.ones(input_shape))
+
+    # Extract trainable parameters and model state
+    params = init_vars['params']
+    model_state = {k: v for k, v in init_vars.items() if k != 'params'}
+
+    # Create the optimizer using optax
+    tx = optax.chain(
+        optax.add_decayed_weights(args.weight_decay),
+        optax.sgd(learning_rate=args.lr, momentum=args.beta, nesterov=args.nesterov)
+    )
+    opt_state = tx.init(params)
+
+    train_state = TrainState(
+        step=0,
+        params=params,
+        opt_state=opt_state,
+        model_state=model_state,
+    )
+    return train_state, tx
+
 
 
 def get_train_state(args, model):
-  time_start = time.time()
-  print('get train state... ', end='')
-  state = create_train_state(args, model)
-  if args.load_dir:
-    print(f'load from {args.load_dir}/ckpts/checkpoint_{args.ckpt}... ', end='')
-    state = checkpoints.restore_checkpoint(args.load_dir + '/ckpts', state, args.ckpt)
-  args.num_params = get_num_params(state.optim.target)
-  print(f'{int(time.time() - time_start)}s')
-  return state, args
+    state, tx = create_train_state(args, model)
+    if args.load_dir:
+        state = checkpoints.restore_checkpoint(args.load_dir + '/ckpts', state, args.ckpt)
+    return state, tx, args
