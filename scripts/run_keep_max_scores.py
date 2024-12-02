@@ -26,6 +26,7 @@ args.data_dir = DATA_DIR
 args.dataset = "cifar10"
 args.random_label_fraction = RAND_LABEL_FRAC
 args.random_label_seed = RAND_LABEL_SEED
+args.adaptive = False
 # Subset selection
 args.subset = "keep_max_scores"  # Specifies subset type for data.py
 args.subset_size = SIZE  # Specifies size of the subset to keep
