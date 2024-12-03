@@ -14,7 +14,7 @@ RAND_LABEL_SEED = int(sys.argv[5])
 EPOCHS = int(sys.argv[6])
 DATASET_FRACTION = float(sys.argv[7])
 META_MODEL_SEED, META_TRAIN_SEED, SEED_INCR = 42, 4242, 424242
-EP_STEPS = 30  # 390
+EP_STEPS = 390  # 390
 DATA_DIR = os.path.join(ROOT, "data")
 EXPS_DIR = os.path.join(ROOT, "exps")
 

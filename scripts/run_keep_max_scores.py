@@ -1,4 +1,4 @@
-# python run_keep_max_scores.py <ROOT:str> <EXP:str> <SCORE_PATH:str> <SIZE:int> <RUN:int>
+# python run_keep_max_scores.py <ROOT:str> <EXP:str> <SCORE_PATH:str> <SIZE:int> <RUN:int> <RAND_LABEL_FRAC:float> <RAND_LABEL_SEED:int> <EPOCHS:int>
 
 from data_diet.train import train
 import os
