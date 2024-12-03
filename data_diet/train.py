@@ -244,7 +244,8 @@ def train(args):
     end_time = time()
     logger.info(f"Train duration {end_time-start_time}s")
     # save prune stats to recorder
-    record_prune_stats(rec, pruning_manager.get_prune_stats())
+    if args.adaptive:
+        record_prune_stats(rec, pruning_manager.get_prune_stats())
 
     # wrap up
     save_recorder(args.save_dir, rec)
