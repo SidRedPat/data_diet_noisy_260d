@@ -30,7 +30,7 @@ args.random_label_fraction = RAND_LABEL_FRAC
 args.random_label_seed = RAND_LABEL_SEED
 args.adaptive = False
 args.initial_prune_percent = 0.0
-args.patience = 20
+args.patience = 10
 # subsets
 args.subset = None
 args.subset_size = None
