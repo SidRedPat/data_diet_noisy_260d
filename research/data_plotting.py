@@ -44,24 +44,24 @@ plt.show()
 # %%
 recorder_dict = {
     "noise_10": {
-        "el2n_25": "recorder_11.pkl",
-        "full_data": "recorder_7.pkl",
-        "adaptive": "recorder5_1.pkl",
+        "el2n_25": "recorder_el2n25_10.pkl",
+        "full_data": "recorder_fulldata_10.pkl",
+        "adaptive": "recorder_adaptive_10.pkl",
     },
     "noise_15": {
-        "el2n_25": "recorder_12.pkl",
-        "full_data": "recorder_8.pkl",
-        "adaptive": "recorder_3_1.pkl",
+        "el2n_25": "recorder_el2n25_15.pkl",
+        "full_data": "recorder_fulldata_15.pkl",
+        "adaptive": "recorder_adaptive_15.pkl",
     },
     "noise_20": {
-        "el2n_25": "recorder_13.pkl",
-        "full_data": "recorder_9.pkl",
-        "adaptive": "recorder_4.pkl",
+        "el2n_25": "recorder_el2n25_20.pkl",
+        "full_data": "recorder_fulldata_20.pkl",
+        "adaptive": "recorder_adaptive_20.pkl",
     },
     "noise_30": {
-        "el2n_25": "recorder_14.pkl",
-        "full_data": "recorder_10.pkl",
-        "adaptive": "recorder_6_1.pkl",
+        "el2n_25": "recorder_el2n25_30.pkl",
+        "full_data": "recorder_fulldata_30.pkl",
+        "adaptive": "recorder_adaptive_30.pkl",
     },
 }
 recorders = {}

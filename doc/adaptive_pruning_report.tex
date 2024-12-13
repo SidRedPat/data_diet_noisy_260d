@@ -50,7 +50,7 @@ Our main contributions include: a novel dynamic pruning algorithm that adapts it
 
 \section{Related Work}
 
-Prior research in dataset selection [4][5] and pruning has evolved across multiple domains and approaches. The foundational work 'Deep Learning on a Data Diet [1]' introduced important scoring mechanisms (GraNd and EL2N) that could identify valuable training examples early in the training process. This work demonstrated that models could maintain or even improve accuracy while training on only half of the CIFAR-10 dataset. However, these static scoring methods showed significant limitations when dealing with noisy data.
+Prior research in dataset selection \cite{mirzasoleiman2019}\cite{mirzasoleiman2020} and pruning has evolved across multiple domains and approaches. The foundational work 'Deep Learning on a Data Diet \cite{paul2021}' introduced important scoring mechanisms (GraNd and EL2N) that could identify valuable training examples early in the training process. This work demonstrated that models could maintain or even improve accuracy while training on only half of the CIFAR-10 dataset. However, these static scoring methods showed significant limitations when dealing with noisy data.
 
 Building on these findings, researchers explored dynamic pruning strategies that adapted to the model's training trajectory. This advancement recognized that some training examples (termed "sometimes samples") might be crucial during specific phases of training but less important in others. This dynamic approach proved successful, cutting training time in half for CIFAR datasets while maintaining model performance. The effectiveness of these pruning techniques was further validated beyond computer vision, with successful adaptations for NLP tasks and pre-trained language models like BERT, demonstrating the broad applicability of these principles across different domains.
 
@@ -62,7 +62,7 @@ The core idea of our approach is to dynamically adjust dataset pruning throughou
 
 The foundation of our approach relies on the Error L2-Norm (EL2N) score, which measures the squared L2 distance between a model's predicted probabilities and the target labels. Formally, for a given example $x$ with label $y$, the EL2N score is defined as:
 
-$EL2N(x,y) = |f_\theta(x) - y|_2$
+$EL2N(x,y) = ||f_\theta(x) - y||_2$
 
 where $f_\theta(x)$ represents the model's output probabilities. Higher EL2N scores typically indicate either difficult examples or potentially noisy labels, while lower scores suggest examples the model learns more consistently from.
 
@@ -180,7 +180,7 @@ To track the different phases of pruning, we make use of a new TrainState variab
     )
 \end{verbatim}
 
-The core of the algorithm logic is implemented in the \textit{AdaptiveEL2NPruning::adaptive\_pruning\_strategy} method. 
+The core of the algorithm logic is implemented in the \newline \textbf{AdaptiveEL2NPruning::adaptive\_pruning\_strategy} method. 
 
 This method introduces several key innovations:
 
@@ -210,61 +210,49 @@ This maintains the effective sample size by scaling weights to ensure the learni
     
 \section{Experimental Results}
 
-We evaluate our adaptive EL2N-based pruning approach against two baselines: (1) standard training with the full dataset and (2) static EL2N pruning with 25\% data removal. To be able to evaluate our adaptive pruning algorithm, we implemented a noise generation function, which is used at varying levels.
-
-The details are as follows:
+This study evaluates the efficacy of our adaptive EL2N-based pruning approach in relation to two baseline methodologies: (1) conventional training using the complete dataset, and (2) static EL2N pruning with removal of 25\% of the data. 
 
 \subsection{Setup}
-We conducted experiments using:
-\begin{itemize}
-\item Dataset: CIFAR-10 with artificial label noise (10\%, 15\%, 20\%, 30\%)
-\item Architecture: ResNet18
-\item Training: 30 epochs, batch size 1024
-\item SGD with Nesterov momentum and weight decay
-\item learning rate decay starting at 0.1 and following a piecewise schedule by a factor of 0.2
-\item Hardware: NVIDIA A100 GPU
-\end{itemize}
+
+The experimental framework uses the CIFAR-10 dataset, augmented with artificial label noise introduced at rates of 10\%, 15\%, 20\%, and 30\%. We used ResNet18 as the model architecture, training it over 30 epochs with a batch size of 1024. Optimization settings were not changed from the original code, performing stochastic gradient descent (SGD) with Nesterov momentum and weight decay, and the learning rate adhered to a piecewise decay schedule, initially set at 0.1 and reduced by a factor of 0.2 at specific intervals. All experiments were performed on an NVIDIA A100 GPU.
+
+\subsection{Testing methodology}
+
+To ensure consistent results, we performed each training experiment twice and averaged the results, finding negligible difference in metrics between the two runs of each case. For every noise level, we trained a model following our proposed algorithm and the two baseline methodologies. The CIFAR10 dataset was used for all experiments, randomly changing the labels of a percentage of the training images given by the noise level.
+Early stopping was implemented to make efficient use of our limited computational capacity, and almost all training runs were stopped before reaching the full 30 epochs. All test accuracy results were taken after the test loss and accuracy values had converged.
+
+One noteworthy observation is that, as the noise level increases, we notice the testing accuracy rises quickly but later drops to its final value. This behavior was not expected, but could be explained by the model learning more general features from the images in the early epochs and the learning rate being large (this value was kept from the work in \cite{paul2021})
 
 \subsection{Classification Accuracy}
 
-Our method demonstrates robust performance across different noise levels:
-
-\begin{itemize}
-    \item At 20\% noise, adaptive pruning achieves 81\% accuracy, compared to 75\% for full training and 71\% for static EL2N pruning
-    \item Performance degradation is more graceful with increasing noise levels compared to static pruning
-    \item The accuracy gap between our method and full training remains nearly constant until up to 20\% noise
-\end{itemize}
+The proposed adaptive pruning method demonstrates a level of robustness comparable to using the full dataset across diverse noise levels. For example, at a noise level of 15\%, the approach achieves an accuracy of 79.35\%, surpassing both full training (77.64\%) and static EL2N pruning (75.09\%). Importantly, the adaptive strategy exhibits a more gradual performance decline under higher noise conditions compared to the static pruning baseline.
+The full training curves can be observed in Figures \ref{fig:output_10}, \ref{fig:output_15}, \ref{fig:output_20}, and \ref{fig:output_30}, and the direct comparison in section \ref{comparative_analysis}
 
 \subsection{Training Dynamics}
 
-The learning curves reveal several key insights:
+The dynamics of the training process offer essential insights into the efficacy of our approach. Within the initial phase of training, comprising the first 30\% of epochs, the algorithm primarily targets the identification and removal of high-noise samples. Such targeted pruning contributes to a stable and consistent trajectory of learning. In the subsequent stages of training, the progressive nature of the pruning strategy maintains the performance of the model and avoids the accuracy degradation typically associated with static pruning methods.
 
-\begin{itemize}
-    \item Early training phase (first 30\% of epochs): 
-        \begin{itemize}
-            \item Focuses on removing high-noise samples
-            \item Maintains stable learning progression
-        \end{itemize}
-    \item Late training phase:
-        \begin{itemize}
-            \item Progressive pruning maintains model performance
-            \item Avoids the accuracy degradation seen in static pruning
-        \end{itemize}
-\end{itemize}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{output_prune_percentages.png}
+    \caption{Prune percentages per batch}
+    \label{fig:prune_percent}
+\end{figure}
 
 \subsection{Pruning Effectiveness}
 
-Our dynamic pruning strategy achieves:
+The dynamic pruning strategy achieves an average pruning rate of 24.4\% across the training process, maintaining computational efficiency comparable to baseline approaches and introducing negligible overhead. Notably, the method achieves an optimal balance between accuracy and computational efficiency, outperforming static pruning in this regard.
 
-\begin{itemize}
-    \item Average pruning rate of 24.4\% across training
-    \item Comparable training time to baseline (no significant overhead)
-    \item Better accuracy-efficiency trade-off compared to static pruning
-\end{itemize}
+\subsection{Comparative Analysis}\label{comparative_analysis}
 
-\subsection{Comparative Analysis}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{output_comparison2.png}
+    \caption{Comparison of training methods}
+    \label{fig:comparison}
+\end{figure}
 
-Table~\ref{tab:results} summarizes the test accuracy across different noise levels \ref{fig:perf-noise}:
+Table~\ref{tab:results} summarizes the test accuracy across different noise levels, plotted in Figure \ref{fig:comparison}:
 
 \begin{table}[h]
 \caption{Test Accuracy (\%) at Different Noise Levels}
@@ -274,22 +262,16 @@ Table~\ref{tab:results} summarizes the test accuracy across different noise leve
 \toprule
 Method & 10\% & 15\% & 20\% & 30\% \\
 \midrule
-Full Training & 85 & 80 & 75 & 67 \\
-Static EL2N & 79 & 76 & 71 & 63 \\
-Adaptive EL2N & 86 & 84 & 81 & 83 \\
+Full Training & \textbf{81.33} & 77.64 & \textbf{75.27} & 67.18 \\
+Static EL2N & 79.63 & 75.09 & 71.03 & 61.03 \\
+Adaptive EL2N & 81.14 & \textbf{79.35} & 74.26 & \textbf{67.43} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The results demonstrate that our dynamic pruning approach:
-\begin{itemize}
-    \item Maintains performance close to full training
-    \item Significantly outperforms static pruning
-    \item Provides consistent benefits across noise levels
-    \item Achieves these improvements while training on a reduced dataset
-\end{itemize}
+The empirical results underscore that the adaptive pruning approach achieves performance metrics closely aligned with those of full training, while consistently and significantly outperforming static pruning. These benefits persist across all evaluated noise levels, highlighting the robustness and adaptability of the proposed methodology. Furthermore, these gains are realized while training on a reduced dataset, illustrating the capability of dynamic pruning strategies to effectively manage noisy datasets without compromising model accuracy.
 
-These findings support our hypothesis that dynamic adaptation of pruning strategies throughout training can effectively handle noisy datasets while maintaining model performance.
+These findings support our hypothesis that dynamic adaptation of pruning strategies throughout training can effectively handle noisy datasets while maintaining model performance. The approach ensures not only high model performance but also computational efficiency, offering a compelling solution for real-world applications where noise is prevalent.
 
 \section{Project Challenges}
 
@@ -297,47 +279,27 @@ Our research encountered several significant challenges that merit discussion. T
 
 \subsection{Computational Resources and Time Constraints}
 
-Training deep learning models with various noise levels and pruning strategies required substantial computational resources. Even with access to A100 GPUs, executing more than 12 experimental runs across a two-week period proved time-intensive. Each run needed to be carefully monitored and validated, limiting our ability to explore a broader range of hyperparameters and architectures.
+Training deep learning models with various noise levels and pruning strategies required substantial computational resources. Even with access to A100 GPUs, executing more than 24 experimental runs across a two-week period proved time-intensive. Each run needed to be carefully monitored and validated, limiting our ability to explore a broader range of hyperparameters and architectures.
 
 \subsection{Hyperparameter Complexity}
 
-The introduction of dynamic pruning added several new hyperparameters to an already complex training process:
-
-\begin{itemize}
-    \item Initial pruning percentage
-    \item Transition timing between pruning phases
-    \item Rate of pruning adjustment
-    \item Interaction with existing hyperparameters (learning rate, batch size)
-\end{itemize}
+The introduction of dynamic pruning added several new hyperparameters to an already complex training process, such as the initial pruning percentage, transition timing between pruning phases, rate of pruning adjustment and interaction with existing hyperparameters (learning rate, batch size).
 
 The potential combinations grew exponentially, making exhaustive exploration impractical. The interaction between pruning strategies and traditional training parameters remains an open question.
 
 \subsection{Evaluation}
 
-Noisy datasets complicated the evaluation process in several ways:
+Noisy datasets complicated the evaluation process by producing results with test accuracy exhibited non-monotonic behavior (e.g., better performance at 2K steps than at 4K steps with 20\% noise). Additionally, traditional metrics became less reliable as noise levels increased and distinguishing between pruning effects and noise effects becomes more challenging.
 
-\begin{itemize}
-    \item Test accuracy exhibited non-monotonic behavior (e.g., better performance at 2K steps than at 4K steps with 20\% noise)
-    \item Traditional metrics became less reliable as noise levels increased
-    \item Difficulty in distinguishing between pruning effects and noise effects
-\end{itemize}
+Our primary hypothesis, that dynamic tuning of pruning-related hyperparameters throughout training improves accuracy for noisy datasets, relied heavily on heuristics. This necessitated extensive empirical validation, which was constrained by the aforementioned computational limitations.
 
-Our primary hypothesis---that dynamic tuning of pruning-related hyperparameters throughout training improves accuracy for noisy datasets---relied heavily on heuristics. This necessitated extensive empirical validation, which was constrained by the aforementioned computational limitations.
-
-These challenges underscore the need for:
-
-\begin{enumerate}
-    \item More efficient methods for hyperparameter optimization
-    \item Better theoretical understanding of pruning dynamics
-    \item Improved metrics for evaluating performance on noisy datasets
-    \item Standardized benchmarks for comparing dynamic pruning strategies
-\end{enumerate}
+These challenges underscore the need for more efficient methods for hyperparameter optimization, better theoretical understanding of pruning dynamics, improved metrics for evaluating performance on noisy datasets, and standardized benchmarks for comparing dynamic pruning strategies.
 
 Despite these challenges, our results demonstrate the potential of dynamic pruning strategies. Future work will need to address these limitations systematically, potentially through automated hyperparameter optimization and more sophisticated evaluation metrics.
 
 \section{Future Work}
 
-Our current results, while promising, suggest several compelling directions for future research. First, extending the experimental validation would strengthen our findings. This includes conducting additional runs to establish statistical significance and eliminate potential random effects in our current results. More comprehensive validation could also involve scaling to larger datasets such as CIFAR-100, which would help verify the approach's effectiveness on more complex classification tasks.
+Our current results, while promising, suggest several compelling directions for future research. First, extending the experimental validation would strengthen our findings. This includes conducting additional runs to establish statistical significance and eliminate potential random effects in our current results. More comprehensive validation could also involve scaling to larger datasets such as CIFAR-100, which would help verify the approach's effectiveness on more complex classification tasks, and applying this algorithm to different model architectures. 
 
 A particularly interesting direction involves extending our dynamic pruning framework beyond vision tasks. Specifically, adapting the method for different architectures like GPT and exploring its effectiveness on text, voice, and video data would demonstrate the framework's generalizability across domains. This cross-domain validation is especially important given the prevalence of noisy labels in real-world datasets across various modalities.
 
@@ -348,37 +310,67 @@ While we have focused primarily on improving training efficiency in the presence
 \section{Conclusion}
 We presented a dynamic EL2N-based pruning approach that effectively handles noisy datasets while maintaining model performance. Our method demonstrates significant improvements over static pruning approaches, particularly in high-noise scenarios. The results suggest that adaptive pruning strategies can better capture the changing dynamics of model training, leading to more robust and efficient learning.
 
-\section*{References}
-{
-\small
+\begin{thebibliography}{9}
 
-[1] Paul et al. "Deep Learning on a Data Diet: Finding Important Examples Early in Training." arXiv:2107.07075, 2021.
+\bibitem{paul2021}
+Paul et al., "Deep Learning on a Data Diet: Finding Important Examples Early in Training," \textit{arXiv:2107.07075}, 2021.
 
-[2] Kirsch, A. "Does 'Deep Learning on a Data Diet' reproduce?" OATML Technical Report, 2023.
+\bibitem{kirsch2023}
+Kirsch, A., "Does 'Deep Learning on a Data Diet' reproduce?" \textit{OATML Technical Report}, 2023.
 
-[3] Cody Coleman, Christopher Yeh, Stephen Mussmann, Baharan Mirzasoleiman, Peter Bailis, Percy Liang, Jure Leskovec, Matei Zaharia. "Selection via Proxy: Efficient Data Selection for Deep Learning". arXiv:1906.11829, 2019.
+\bibitem{coleman2019}
+Cody Coleman, Christopher Yeh, Stephen Mussmann, Baharan Mirzasoleiman, Peter Bailis, Percy Liang, Jure Leskovec, Matei Zaharia, "Selection via Proxy: Efficient Data Selection for Deep Learning," \textit{arXiv:1906.11829}, 2019.
 
-[4] Baharan Mirzasoleiman, Jeff Bilmes, Jure Leskovec. "Coresets for Data-efficient Training of Machine Learning Models". arXiv:1906.01827, 2019.
+\bibitem{mirzasoleiman2019}
+Baharan Mirzasoleiman, Jeff Bilmes, Jure Leskovec, "Coresets for Data-efficient Training of Machine Learning Models," \textit{arXiv:1906.01827}, 2019.
 
-[5] Baharan Mirzasoleiman, Kaidi Cao, Jure Leskovec. "Coresets for Robust Training of Neural Networks against Noisy Labels". arXiv:2011.07451, 2020.
+\bibitem{mirzasoleiman2020}
+Baharan Mirzasoleiman, Kaidi Cao, Jure Leskovec, "Coresets for Robust Training of Neural Networks against Noisy Labels," \textit{arXiv:2011.07451}, 2020.
 
-[6] Bertsekas, D. P. "Incremental gradient, subgradient, and proximal methods for convex optimization: A survey". arXiv preprint arXiv:1507.01030, 2015b.
+\bibitem{bertsekas2015}
+Bertsekas, D. P., "Incremental gradient, subgradient, and proximal methods for convex optimization: A survey," \textit{arXiv preprint arXiv:1507.01030}, 2015b.
 
-[7] Glorot, X. and Bengio, Y. "Understanding the difficulty of training deep feedforward neural networks." In Proceed- ings of the thirteenth international conference on artifi- cial intelligence and statistics, pp. 249–256, 2010.
+\bibitem{glorot2010}
+Glorot, X. and Bengio, Y., "Understanding the difficulty of training deep feedforward neural networks," in \textit{Proceedings of the Thirteenth International Conference on Artificial Intelligence and Statistics}, pp. 249–256, 2010.
 
-[8] Kaufman, L., Rousseeuw, P., and Dodge, Y. "Clustering by means of medoids in statistical data analysis", 1987.
+\bibitem{kaufman1987}
+Kaufman, L., Rousseeuw, P., and Dodge, Y., "Clustering by means of medoids in statistical data analysis," 1987.
 
-[9] Lin, H., Bilmes, J., and Xie, S. "Graph-based submodular selection for extractive summarization". In Proc. IEEE Au- tomatic Speech Recognition and Understanding (ASRU), Merano, Italy, December 2009.
+\bibitem{lin2009}
+Lin, H., Bilmes, J., and Xie, S., "Graph-based submodular selection for extractive summarization," in \textit{Proceedings of the IEEE Automatic Speech Recognition and Understanding (ASRU)}, Merano, Italy, December 2009.
 
-}
+\end{thebibliography}
+
 
 \appendix
 \section{Additional Material}
 
-\begin{figure}
-    \includegraphics[scale=0.3]{graph-perf-noise.png}
-    \caption{Performance vs Noise Level}
-    \label{fig:perf-noise}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{output_noise_10.png}
+    \caption{Test curves at 10\% noise}
+    \label{fig:output_10}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{output_noise_15.png}
+    \caption{Test curves at 15\% noise}
+    \label{fig:output_15}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{output_noise_20.png}
+    \caption{Test curves at 20\% noise}
+    \label{fig:output_20}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{output_noise_30.png}
+    \caption{Test curves at 30\% noise}
+    \label{fig:output_30}
 \end{figure}
 
 \end{document}
