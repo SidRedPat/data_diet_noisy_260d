@@ -191,7 +191,7 @@ Focuses on noise reduction by removing samples with the highest EL2N scores. It 
 This phase implements a progressive pruning strategy, dynamically increasing the pruning percentage according to: 
 
 \begin{verbatim}
-prune_percent = min(0.5, initial_prune_percent \cdot (1 + 2(epoch_progress - 0.5)))
+prune_percent = min(0.5, initial_prune_percent * (1 + 2 * (epoch_progress - 0.5)))
 \end{verbatim}
 
 The objective is to retains samples with higher EL2N scores to focus on harder, more informative examples.
